@@ -1,0 +1,11 @@
+# Spike artifacts — never commit captures or splats (large/binary)
+*.ply
+*.spz
+*.splat
+*.ksplat
+*.zip
+frames/
+captures/
+__pycache__/
+# keep sample_capture/capture.json (the schema example) but not any images dropped beside it
+sample_capture/frames/
