@@ -72,6 +72,23 @@ See the **Recon spike** section below for the state this left off at.
   -P campo/blender/entry.py
 ```
 
+### Assets not in this repo
+
+- **`assets/Rain v3.3/`** — Rain CloudRig character (65MB, gitignored). Download from
+  [blender.org demo files](https://www.blender.org/download/demo-files/) under Characters.
+  Place at `assets/Rain v3.3/rain_v3.2.blend` with its `textures/` subfolder.
+  Rain's CloudRig arm posing is fully solved — see the **Arm posing** section below.
+
+- **`assets/smpl_models/SMPL_NEUTRAL.pkl`** — only needed if you're also running the SMPL
+  path. Register free at [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de), download
+  SMPL_python_v.1.1.0.zip, extract into `assets/smpl_models/`.
+
+### Full Blender API reference
+
+**`docs/blender.md`** (in this repo) has the complete reference: Blender API rules,
+camera rotation patterns, geometry creation with bmesh, clothing loading strategy with
+scale correction math, actor bounding box constants, and the full gotchas table.
+
 ---
 
 ### Known Blender 5.x headless gotchas
@@ -101,7 +118,17 @@ call `clear_scene()` — the character is already there.
 There is no window manager in headless mode. Never rely on `bpy.context.active_object`
 after calling an operator. Use `bpy.data` to look objects up by name directly.
 
-**4. `add_standard_rig` must NOT use `temp_override`**
+**4. Character renders black**
+
+If the character renders as a solid black silhouette, the character's collection has
+`hide_render=True` set in the source `.blend`. Fix after loading:
+```python
+for col in bpy.data.collections:
+    if col.name.lower() in ("character", "makehuman_human", actor.name.lower()):
+        col.hide_render = False
+```
+
+**5. `add_standard_rig` must NOT use `temp_override`**
 
 `bpy.ops.mpfb.add_standard_rig` internally reads `bpy.context.object` to get the
 new armature. A `temp_override(object=mesh)` locks that value for the entire operator,
@@ -130,6 +157,9 @@ _MPFB_MOD = sys.modules.get("bl_ext.blender_org.mpfb")  # or user_default
 `calculate_target_stack_from_macro_info_dict` + `bulk_load_targets` separately
 (format mismatch between those two). Always seed from
 `TargetService.get_default_macro_info_dict()` and `.update()` with overrides.
+
+`create_human()` no longer accepts a `name` parameter in MPFB 2.0.15 — call with
+no args, then rename the resulting object via `bpy.data.objects[...].name = "..."` afterward.
 
 Armature lookup: MPFB 2 may place the rig as parent, child, modifier target, or
 collection sibling — `_find_armature` checks all four.
@@ -257,3 +287,16 @@ the reconstruction approach.
 **Note on blur gating:** frames 1–4 in the test bundle have blur=0 and pos_delta=0
 (camera warmup artifact). The blur gate was disabled during capture — p10 blur=5.4
 is a reasonable threshold to re-enable for next capture.
+
+**Replicate vs Colab:** `recon-spike/reconstruct.py` was written for Replicate, but
+we switched to Colab/nerfstudio (cells above) because Replicate's hosted gsplat model
+selection was too thin and most models ignore supplied ARKit poses. If you want to use
+Replicate anyway, search for a `gaussian-splatting` trainer and check whether it accepts
+`transforms.json` poses — most re-run COLMAP internally and discard supplied poses.
+
+**Spark API drift:** `recon-spike/viewer/index.html` uses unpinned `esm.sh` imports.
+Check current Spark docs and pin versions before relying on the viewer.
+
+**Full reconstruction research docs** (go/no-go criteria, tier comparisons, iOS capture
+app design) are in the main CampoBlender repo under `docs/reconstruction_roadmap.md`,
+`docs/server_reconstruction.md`, and `docs/alternate_env_scanning.md`.
